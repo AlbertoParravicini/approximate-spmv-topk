@@ -11,13 +11,13 @@ In short, **blazing fast sparse embedding approximate lookup!!!**
 
 ### High-level drawing of our FPGA design
 
-![High-level FPGA architecture](https://github.com/AlbertoParravicini/approximate-spmv-topk/blob/master/data/plots/architecture.png)
+![High-level FPGA architecture](https://github.com/AlbertoParravicini/approximate-spmv-topk/blob/main/data/plots/architecture.png)
 
 ### Summary of the our performance results
 
-![Speedup of our design](https://github.com/AlbertoParravicini/approximate-spmv-topk/blob/master/data/plots/exec_time_2021_03_07.png)
+![Speedup of our design](https://github.com/AlbertoParravicini/approximate-spmv-topk/blob/main/data/plots/exec_time_2021_03_07.png)
 
-![Roofline model of our design](https://github.com/AlbertoParravicini/approximate-spmv-topk/blob/master/data/plots/roofline_cpu_gpu_2021_03_07.png)
+![Roofline model of our design](https://github.com/AlbertoParravicini/approximate-spmv-topk/blob/main/data/plots/roofline_cpu_gpu_2021_03_07.png)
 
 If you liked the Roofline Model plot, check out how to [recreate](https://github.com/AlbertoParravicini/segretini-matplottini) it!
 
