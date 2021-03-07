@@ -1,0 +1,10 @@
+build/
+data/matrices_for_testing/documents/*
+data/matrices_for_testing/graphs/*
+data/matrices_for_testing/matrices_512/*
+data/matrices_for_testing/*
+**/.DS_Store
+
+src/gpu/bin/*
+
+data/results/
