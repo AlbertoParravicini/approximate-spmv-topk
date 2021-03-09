@@ -70,6 +70,15 @@ Contributors: **Alberto Parravicini, Luca Giuseppe Cellamare, Marco Siracusa, Ma
 If you find this repository useful, please use the following citation(s):
 
 ```
+@misc{parravicini2021scaling,
+      title={Scaling up HBM Efficiency of Top-K SpMV for Approximate Embedding Similarity on FPGAs}, 
+      author={Alberto Parravicini and Luca Giuseppe Cellamare and Marco Siracusa and Marco Domenico Santambrogio},
+      year={2021},
+      eprint={2103.04808},
+      archivePrefix={arXiv},
+      primaryClass={cs.AR}
+}
+
 @inproceedings{
     author = {Parravicini, Alberto and Cellamare, Luca Giuseppe and Siracusa, Marco and Santambrogio, Marco D},
     title = {Scaling up HBM Efficiency of Top-K SpMV for Approximate Embedding Similarity on FPGAs},
