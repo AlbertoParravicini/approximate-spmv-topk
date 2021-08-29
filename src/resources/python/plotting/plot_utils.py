@@ -177,8 +177,11 @@ def get_upper_ci_size(x, ci=0.95, estimator=np.mean):
     return get_ci_size(x, ci, estimator=estimator)[0]
     
     
-def add_labels(ax: plt.Axes, labels: list=None, vertical_offsets: list=None, patch_num: list=None, fontsize: int=14, rotation: int=0,
-               skip_zero: bool=False, format_str: str="{:.2f}x", label_color: str="#2f2f2f", max_only=False, skip_bars: int=0, max_bars: int=None):
+def add_labels(ax: plt.Axes, labels: list=None, vertical_offsets: list=None,
+               patch_num: list=None, fontsize: int=14, rotation: int=0,
+               vertical_coords: list=None,
+               skip_zero: bool=False, format_str: str="{:.2f}x",
+               label_color: str="#2f2f2f", max_only=False, skip_bars: int=0, max_bars: int=None):
     """
     :param ax: current axis, it is assumed that each ax.Patch is a bar over which we want to add a label
     :param labels: optional labels to add. If not present, add the bar height
@@ -212,7 +215,8 @@ def add_labels(ax: plt.Axes, labels: list=None, vertical_offsets: list=None, pat
     # Iterate through the list of axes' patches
     for i, p in enumerate(patches[skip_bars:max_bars]):
         if labels[i] and (i > 0 or not skip_zero) and (not max_only or i == argmax) and i < len(labels) and i < len(vertical_offsets):
-            ax.text(p.get_x() + p.get_width()/2., vertical_offsets[i] + p.get_height(), format_str.format(labels[i]), 
+            ax.text(p.get_x() + p.get_width()/2., (vertical_offsets[i] + p.get_height()) if not vertical_coords else vertical_coords[i],
+                    format_str.format(labels[i]), 
                     fontsize=fontsize, color=label_color, ha='center', va='bottom', rotation=rotation)
         
 
@@ -229,6 +233,23 @@ def update_width(ax: plt.Axes, width: float=1):
         # Recenter the bar
         patch.set_x(patch.get_x() + 0.5 * diff)
         
+        
+def transpose_legend_labels(labels, patches, max_elements_per_row=6, default_elements_per_col=2):
+    """
+    Matplotlib by defaults places elements in the legend from top to bottom.
+    In most cases, placing them left-to-right is more readable (you know, English is read left-to-right, not top-to-bottom)
+    This function transposes the elements in the legend, allowing to set the maximum number of values you want in each row.
+    
+    :param labels: list of labels in the legend
+    :param patches: list of patches in the legend
+    :param max_elements_per_row: maximum number of legend elements per row
+    :param default_elements_per_col: by default, try having default_elements_per_col elements in each col (could be more if max_elements_per_row is reached) 
+    """
+    elements_per_row = min(int(np.ceil(len(labels) / default_elements_per_col)), max_elements_per_row)  # Don't add too many elements per row;
+    labels = np.concatenate([labels[i::elements_per_row] for i in range(elements_per_row)], axis=0)
+    patches = np.concatenate([patches[i::elements_per_row] for i in range(elements_per_row)], axis=0)
+    return labels, patches
+
         
 def save_plot(directory: str, filename: str, date: str = "", create_date_dir: bool = True, extension: list = ["pdf", "png"]):
     """

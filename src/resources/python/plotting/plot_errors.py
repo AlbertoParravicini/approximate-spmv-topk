@@ -23,13 +23,21 @@ from plot_utils import *
 bt1 = "#55819E"
 bt2 = "#538F6F"
 
+# DAC
 FPGA_RESULT_FOLDER = "../../../../data/results/fpga/2020_11_21_15_07_03"
+# Thesis
+# FPGA_RESULT_FOLDER = "../../../../data/results/fpga/2021_08_14_19_20_18"
+
 GPU_RESULT_FOLDER = "../../../../data/results/gpu/2020_11_19_15_39_53"
 # FPGA_RESULT_FOLDER = "../../../../data/results/fpga/2020_11_22"
 # GPU_RESULT_FOLDER = "../../../../data/results/gpu/2020_11_22"
-DATE = "2021_03_07"
+DATE = "2021_08_14"
 
 THRESHOLDS = [8, 16, 32, 50, 75, 100]
+
+# KIND = "uniform"  # Plot uniform + glove
+# KIND = "gamma"    # Plot gamma
+KIND = "all"      # Plot all
 
 def read_data_fpga():
     result_list = []
@@ -51,6 +59,10 @@ def read_data_fpga():
                 
                 for r in result:
                     try:
+                        _, iteration, error_idx, error_val, sw_full_time_ms, sw_topk_time_ms, \
+                        hw_setup_time_ms, hw_exec_time_ms, full_hw_exec_time_ms, readback_time_ms, k, sw_res_idx, \
+                        sw_res_val, hw_res_idx, hw_res_val = r.split(",")
+                    except ValueError:
                         iteration, error_idx, error_val, sw_full_time_ms, sw_topk_time_ms, \
                         hw_setup_time_ms, hw_exec_time_ms, full_hw_exec_time_ms, readback_time_ms, k, sw_res_idx, \
                         sw_res_val, hw_res_idx, hw_res_val = r.split(",")
@@ -219,8 +231,13 @@ def ndcg(sw_res_idx, sw_res_val, hw_res_idx, hw_res_val):
     return dcg / idcg, dcg, idcg
 
 
-if __name__ == "__main__":
+def plot_errors(agg_in):
     
+    agg = agg_in.copy()
+    z_added = False
+    
+    # Setup plot;
+    plt.rcdefaults()
     sns.set_style("white", {"ytick.left": True})
     plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     plt.rcParams['axes.titlepad'] = 40 
@@ -228,56 +245,40 @@ if __name__ == "__main__":
     plt.rcParams['axes.titlesize'] = 22 
     plt.rcParams['axes.labelsize'] = 14 
     plt.rcParams['xtick.major.pad'] = 10
-
-    res_fpga, agg_fpga = read_data_fpga()
-    res_gpu, agg_gpu = read_data_gpu()
-    
-    #%%
-    
-     # Filter wrong output data;
-    agg_fpga = agg_fpga[agg_fpga["prec_100"] > 0.2]
-    agg_fpga = agg_fpga[agg_fpga["n_bit"].isin(["20", "32", "F32"])]
-    
-    agg_gpu = agg_gpu[agg_gpu["n_bit"] == "F16"]
-    agg_gpu = agg_gpu[agg_gpu["impl"] == "0"]
-     
-    agg = pd.concat([agg_fpga, agg_gpu], ignore_index=True).reset_index(drop=True)
-    
-    agg = agg[agg["max_cols"] != 512]
-        
-    old_size = len(agg)
-    agg = agg[agg["prec_100"] > 0.9]
-    if len(agg) < old_size:
-        print(f"removed {len(agg)- old_size} rows with low precision")
-    z_added = False
-    
-    #%%
-    
-    # Setup plot;
     plt.rcParams['mathtext.fontset'] = "cm" 
     error_metrics = ["Precision", "Kendall's " + r"$\mathbf{\tau}$", "NDCG"]
     error_metrics_raw = ["prec", "kendall", "ndcg"]
     error_max = [1, 1, 1]
-    error_min = [0.96, 0.95, 0.96]
+    # DAC
+    if KIND == "uniform" or KIND == "all":
+        error_min = [0.96, 0.95, 0.96]
+    elif KIND == "gamma":
+        error_min = [0.80, 0.80, 0.80]
+    # Thesis
+    # error_min = [0.99, 0.99, 0.99]
     
     sizes = sorted(agg["rows"].unique())
     sizes = sizes[1:] + [sizes[0]]
     num_col = len(sizes)
     num_rows = len(error_metrics) 
-    fig = plt.figure(figsize=(1.6 * num_col, 1.5 * num_rows))
+    fig = plt.figure(figsize=(1.7 * num_col, (1.4 if KIND == "uniform" else 1.6) * num_rows))
     gs = gridspec.GridSpec(num_rows, num_col)
     plt.subplots_adjust(top=0.9,
-                    bottom=0.22,
-                    left=0.13,
+                    bottom=0.15 if KIND == "uniform" else 0.25,
+                    left=0.13 if KIND == "gamma" else 0.11,
                     right=0.97,
                     hspace=0.5,
                     wspace=0.5)
 
-    markers = ["o", "X", "D", "P", "P"]
-    palette = [COLORS["peach1"], COLORS["bb2"], "#A5E6C6", COLORS["bb5"], COLORS["bb5"]]           
-    palette = [COLORS["bb2"], "#A5E6C6", COLORS["bb5"], COLORS["peach1"]]   
-    palette_dict = {"z_F16": COLORS["peach1"], "F32": COLORS["bb5"], "32":"#A5E6C6" , "20": C<OLORS["bb2"]}
-    markers_dict = {"z_F16": "P", "F32": "D", "32": "X", "20": "o"}
+    # markers = ["o", "X", "D", "P", "P"]
+    # palette = [COLORS["peach1"], COLORS["bb2"], "#A5E6C6", COLORS["bb5"], COLORS["bb5"]]           
+    # palette = [COLORS["bb2"], "#A5E6C6", COLORS["bb5"], COLORS["peach1"]]  
+    palette = ["#E7F7DF", "#B5E8B5", "#71BD9D", "#469C94"]
+    palette_dict = {"z_F16": COLORS["peach1"], "F32": COLORS["bb5"], "32":"#A5E6C6", "26": COLORS["bb3"], "20": COLORS["bb2"]}
+    palette_dict = {"z_F16": "#ED9E6F", "F32": palette[0], "32": palette[1], "26": palette[2], "20": palette[3]}
+    markers_dict = {"z_F16": "P", "F32": "D", "32": "X", "26": "^", "20": "o"}
+    palette = list(palette_dict.values())[::-1]
+    markers = list(markers_dict.values())[::-1]
 
     if not z_added:
         z_added = True
@@ -337,32 +338,64 @@ if __name__ == "__main__":
             for tic in ax.xaxis.get_major_ticks():
                 tic.tick1line.set_visible(True) 
             
-    plt.annotate("Top-K  (from 8 to 100)", fontsize=12, xy=(0.5, 0.125), xycoords="figure fraction", ha="center")
+    plt.annotate("Top-K (from 8 to 100)", fontsize=12, xy=(0.5, 0.04 if KIND == "uniform" else 0.17), xycoords="figure fraction", ha="center")
            
     # fig.suptitle("Top-K SpMV accuracy for\ndifferent architectures",
                  # fontsize=16, ha="left", x=0.03)
     # plt.annotate("(higher is better)", fontsize=14, xy=(0.03, 0.86), xycoords="figure fraction", ha="left")
     
     # Legend;
-    labels = ["FPGA 20b", "FPGA 32b", "FPGA F32", "GPU F16"]
-    custom_lines = [
-        Line2D([], [], color="white", marker=markers[0],
-               markersize=10, label=labels[0], markerfacecolor=palette[0], markeredgecolor="#2f2f2f"),
-        Line2D([], [], color="white", marker=markers[1],
-               markersize=10, label=labels[1], markerfacecolor=palette[1], markeredgecolor="#2f2f2f"),
-        Line2D([], [], color="white", marker=markers[2],
-               markersize=10, label=labels[2], markerfacecolor=palette[2], markeredgecolor="#2f2f2f"),
-        Line2D([], [], color="white", marker=markers[3],
-                markersize=10, label=labels[3], markerfacecolor=palette[3], markeredgecolor="#2f2f2f"),
-        ]
-    
-    leg = fig.legend(custom_lines,labels,
-                             bbox_to_anchor=(0.5, 0), fontsize=12, ncol=4, handletextpad=0.3, loc="lower center", columnspacing=0.4)
-    leg.set_title(None)
-    leg._legend_box.align = "left"
+    if KIND != "uniform":
+        labels = ["FPGA 20b", "FPGA 25b", "FPGA 32b", "FPGA F32", "GPU F16"]
+        custom_lines = [
+            Line2D([], [], color="white", marker=markers[i],
+                   markersize=10, label=labels[i], markerfacecolor=palette[i], markeredgecolor="#2f2f2f") for i in range(len(markers))
+            ]
+        labels, custom_lines = transpose_legend_labels(labels, custom_lines)                
+        leg = fig.legend(custom_lines,labels,
+                                 bbox_to_anchor=(0.5, 0), fontsize=12, ncol=3, handletextpad=0.3, loc="lower center", columnspacing=0.4)
+        leg.set_title(None)
+        leg._legend_box.align = "left"
             
-    plt.savefig(f"../../../../data/plots/errors_{DATE}.pdf")
+    save_plot("../../../../data/plots", f"errors_{KIND}_{DATE}" + ".{}")  
+
+if __name__ == "__main__":
+
+    res_fpga, agg_fpga = read_data_fpga()
+    res_gpu, agg_gpu = read_data_gpu()
     
+    #%%
+    
+    # Filter wrong output data;
+    old_size = len(agg_fpga)
+    # agg_fpga = agg_fpga[agg_fpga["prec_100"] > 0.2]
+    if len(agg_fpga) < old_size:
+        print(f"warning: removed {len(agg_fpga)- old_size} rows with low precision")
+    agg_fpga = agg_fpga[agg_fpga["n_bit"].isin(["20", "26", "32", "F32"])]
+    
+    agg_gpu = agg_gpu[agg_gpu["n_bit"] == "F16"]
+    agg_gpu = agg_gpu[agg_gpu["impl"] == "0"]
+     
+    agg = pd.concat([agg_fpga, agg_gpu], ignore_index=True).reset_index(drop=True)
+    
+    agg = agg[agg["max_cols"] != 512]
+        
+    old_size = len(agg)
+    # agg = agg[agg["prec_100"] > 0.9]
+    if len(agg) < old_size:
+        print(f"warning: removed {len(agg)- old_size} rows with low precision")
+    
+    # Use only uniform + glove;
+    if KIND == "uniform":
+        agg = agg[agg["distribution"].isin(["uniform", "glove"])]
+    elif KIND == "gamma":
+        # Use only gamma;
+        agg = agg[agg["distribution"] == "gamma"]
+    
+    #%%
+    for KIND in ["uniform", "gamma", "all"]:
+        plot_errors(agg)
+   
 
     #%%
     

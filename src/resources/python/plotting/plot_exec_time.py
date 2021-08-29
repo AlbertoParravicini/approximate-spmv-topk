@@ -28,7 +28,11 @@ from matplotlib.patches import Patch
 CPU_RESULT_FOLDER = "../../../../data/results/cpu/2020_11_22_xeon_6248"
 GPU_RESULT_FOLDER = "../../../../data/results/gpu/2020_11_22"
 FPGA_RESULT_FOLDER = "../../../../data/results/fpga/2020_11_23"
-DATE = "2021_03_07"
+
+# Newest results (Thesis)
+FPGA_RESULT_FOLDER = "../../../../data/results/fpga/2021_08_14_19_20_18"
+
+DATE = "2021_08_16"
 
 CPU_CORES = 80  # Double Xeon 6248
 GPU_CORES = 56  # P100 SM cores;
@@ -152,7 +156,7 @@ def read_results_cpu(folder):
     # Skip first iteration
     results = results[results["iteration"] > 0]
     
-    results_grouped = results.groupby(["rows", "max_cols", "nnz_per_row", "distribution", "hardware", "nnz"])[["error_idx", "error_val", "exec_time_ms"]].agg(np.median)
+    results_grouped = results.groupby(["rows", "max_cols", "nnz_per_row", "distribution", "hardware", "nnz"])[["error_idx", "error_val", "exec_time_ms"]].agg(np.mean)
 
     return results, results_grouped
 
@@ -189,7 +193,7 @@ def read_results_gpu(folder):
     results = results[results["iteration"] > 0]
     # results = remove_outliers_df_grouped(results, "exec_time_ms", ["rows", "max_cols", "nnz_per_row", "distribution", "hardware", "impl", "half_precision"], reset_index=True, drop_index=True, sigmas=1)
 
-    results_grouped = results.groupby(["rows", "max_cols", "nnz_per_row", "distribution", "hardware", "impl", "half_precision"])[["error_idx", "error_val", "spmv_exec_time_ms", "exec_time_ms"]].agg(np.median)
+    results_grouped = results.groupby(["rows", "max_cols", "nnz_per_row", "distribution", "hardware", "impl", "half_precision"])[["error_idx", "error_val", "spmv_exec_time_ms", "exec_time_ms"]].agg(np.mean)
 
     return results, results_grouped
 
@@ -226,14 +230,14 @@ def read_results_fpga(folder):
     results = results[results["bits"] != "21"]
     results = results[~((results["bits"] == "26") & (results["cores"] == 24))]
     
-    # results.loc[results["bits"] == "26", "exec_time_ms"] *= 10
+    results.loc[results["bits"] == "20", "exec_time_ms"] *= 10
     # results.loc[results["bits"] == "float", "exec_time_ms"] *= 10
    
     # Skip first iteration
     results = results[results["iteration"] > 0]
     # results = remove_outliers_df_grouped(results, "exec_time_ms", ["rows", "max_cols", "nnz_per_row", "distribution", "hardware", "bits", "cores", "mhz"], reset_index=True, drop_index=True, sigmas=1)
     
-    results_grouped = results.groupby(["rows", "max_cols", "nnz_per_row", "distribution", "hardware", "bits", "cores", "mhz"])[["error_idx", "error_val", "exec_time_ms", "full_exec_time_ms"]].agg(np.median)
+    results_grouped = results.groupby(["rows", "max_cols", "nnz_per_row", "distribution", "hardware", "bits", "cores", "mhz"])[["error_idx", "error_val", "exec_time_ms", "full_exec_time_ms"]].agg(np.mean)
 
     return results, results_grouped
 
@@ -331,6 +335,7 @@ def get_fpga_label(l):
     
 def get_fpga_legend_label(l, add_freq=False):
     try:
+        print(l)
         _, bits, cores, clock = l.split("_")
         bits = f"{bits}b" if bits != "float" else "F32"
         cores = f"{cores}C"
@@ -339,6 +344,264 @@ def get_fpga_legend_label(l, add_freq=False):
         print("warning, cannot format FPGA label:", l)
         return l
     
+
+def plot_bars(res):
+    
+    sns.set_style("white", {"ytick.left": True})
+    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
+    plt.rcParams['axes.titlepad'] = 25 
+    plt.rcParams['axes.labelpad'] = 9 
+    plt.rcParams['axes.titlesize'] = 22 
+    plt.rcParams['axes.labelsize'] = 14 
+    plt.rcParams['xtick.major.pad'] = 1 
+    plt.rcParams['hatch.linewidth'] = 0.3
+        
+    sizes = sorted(res["rows"].unique())[1:] + [sorted(res["rows"].unique())[0]]
+    dist = res["distribution"].unique()
+    hardware = sorted(res["hardware"].unique())
+
+    num_col = len(sizes)
+    num_rows = 1  # len(dist)
+    fig = plt.figure(figsize=(1.5 * num_col, 2.6 * num_rows))
+    gs = gridspec.GridSpec(num_rows, num_col)
+    plt.subplots_adjust(top=0.9,
+                    bottom=0.33,
+                    left=0.06,
+                    right=.99,
+                    hspace=0.9,
+                    wspace=0.05)
+    
+    # Old palette;
+    palettes = [[COLORS["r1"], COLORS["bb0"], COLORS["bb2"], COLORS["bb3"], COLORS["bb4"], COLORS["bb5"]]] * num_col 
+    # Palette used for DATE;
+    palettes = [[COLORS["peach1"], COLORS["bb2"], COLORS["bb2"], "#A5E6C6", "#A5E6C6", COLORS["bb5"], COLORS["bb5"]]] * num_col 
+    # Orange palette, for GPUs
+    palettes = [[COLORS["peach1"], "#FFA880", "#FFB896", "#FFC7AD"]] * num_col 
+    # Orange palette, yellow, for GPUs
+    palettes_y = [["#FCF061", "#FCF38B", "#FCF49A", "#FCF6B1"]] * num_col 
+    # Palette for DAC
+    palettes = [[COLORS["peach1"], "#FFA880", COLORS["bb5"], "#A5E6C6", COLORS["bb3"], COLORS["bb2"]]] * num_col 
+    palettes_y = [["#FCF49A", "#FCF6B1"]] * num_col 
+    # Palette for thesis
+    palettes = [["#ED9E6F", "#FFA880"] + ["#E7F7DF", "#B5E8B5", "#71BD9D", "#469C94"][::-1]] * num_col 
+    # hatches = [[None, "/" * 7, "\\" * 7, "/" * 7, "\\" * 7, "/" * 7, "\\" * 7] * 2] * num_col 
+    hatches = [["/" * 4, "\\" * 4, "/" * 4, "\\" * 4] * 4] * num_col
+    
+    ii = 0
+    # for ii, group_ii in enumerate(res.groupby(["distribution"])):
+    #     groups = group_ii[1].groupby(["rows"])
+    
+    groups = res.groupby(["rows"])
+    groups = sorted(groups, key=lambda g: g[0])
+    groups = groups[1:] + [groups[0]]
+    fpga_labels = []
+    for i, group in enumerate(groups):
+        ax = fig.add_subplot(gs[ii, i])
+        # Replace "float" with "32float" to guarantee the right bar sorting;
+        # group[1].loc[group[1]["n_bit"] == "cpu", "n_bit"] = "32cpu"
+        
+        # Create a unique row id;
+        # group[1]["row"] = group[1]["n_bit"].astype(str) + group[1]["n_cores"].astype(str) 
+        # group[1]["row_str"] = group[1]["n_bit"].astype(str) + [("b\n" if x !="F32" else "\n") for x in group[1]["n_bit"]] + group[1]["n_cores"].astype(str) + "C"
+        
+        data = group[1] # .sort_values(["n_bit", "n_cores"], ascending=[False, True]).reset_index(drop=True)
+        # Remove CPU;
+        data = data[data["hardware"] != "cpu"]
+
+        ax = sns.barplot(x="hardware", y="spmv_speedup", data=data, palette=palettes_y[i], capsize=.05, errwidth=0.8, ax=ax,
+                          edgecolor="#2f2f2f")
+        ax = sns.barplot(x="hardware", y="speedup", data=data, palette=palettes[i], capsize=.05, errwidth=0.8, ax=ax,
+                          edgecolor="#2f2f2f")
+
+        # Set a different hatch for each bar
+        for j, bar in enumerate(ax.patches):
+            bar.set_hatch(hatches[i][j])
+        # sns.despine(ax=ax)
+       
+        ax.set_ylim((1, int(1.22 * max(np.max(res_agg["spmv_speedup"]), np.max(res_agg["speedup"])))))
+        ax.set_ylabel("")
+        ax.set_xlabel("")
+        labels = ax.get_xticklabels()
+        new_fpga_labels = [get_fpga_legend_label(l._text) for l in labels if l._text not in GPU_LABELS]
+        if len(new_fpga_labels) > len(fpga_labels):
+            fpga_labels = new_fpga_labels
+        ax.set_xticklabels([GPU_LABELS[l._text] if (l._text in GPU_LABELS) else get_fpga_label(l._text) for l in labels])
+        cpu_label = int(np.mean(group[1][group[1]["hardware"] == "cpu"]["exec_time_ms"]))
+        ax.tick_params(axis='x', which='major', labelsize=5, rotation=0)
+        
+        # Set the y ticks;
+        ax.yaxis.set_major_locator(plt.LinearLocator(6))
+        if i == 0:
+            ax.set_yticklabels(labels=[f"{int(l)}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=8)
+        else:
+            ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
+            # Hide tick markers;
+            for tic in ax.yaxis.get_major_ticks():
+                tic.tick1line.set_visible(False) 
+                tic.tick2line.set_visible(False) 
+        ax.xaxis.grid(False)
+        
+        if i > 0:
+            ax.set_yticklabels([])
+            # sns.despine(ax=ax, left=True, top=True, right=True)
+        ax.yaxis.grid(True, linewidth=0.5)
+        
+        # Speedup labels;
+        offsets = []
+        for j, g_tmp in data.groupby(["hardware"]):
+            offsets += [get_upper_ci_size(g_tmp["spmv_speedup"], ci=0.80)]
+        offsets = [o + 4 if not np.isnan(o) else 0.2 for o in offsets]
+        add_labels(ax, vertical_offsets=offsets, rotation=90, fontsize=8, max_only=False, max_bars=6, format_str="{:.0f}x",)
+        
+        # Add graph type;
+        ax.annotate(f"{get_exp_label(sizes[i], 'N=', True)}" if i < 3 else "Sparse GloVe", xy=(0.0, 0.95), fontsize=10, ha="left", xycoords="axes fraction", xytext=(0.0, 1.06))
+                
+        ax.annotate(f"CPU Baseline:", xy=(0.0, -0.28), fontsize=8, ha="left", xycoords="axes fraction")
+        ax.annotate(f"{cpu_label} ms", xy=(0.59, -0.28), fontsize=8, color="#7f7f7f", ha="left", xycoords="axes fraction")
+    
+    # # Add custom legend;
+    labels = ["GPU F32, Top-K SpMV", "GPU F32, SpMV only", "GPU F16, Top-K SpMV", "GPU F16, SpMV only"] + fpga_labels
+    if len(labels) < 8:
+        labels += ["???"] * (8 - len(labels)) 
+    custom_lines = [Patch(facecolor=palettes[0][0], hatch=hatches[0][0], edgecolor="#2f2f2f", label=labels[0]),
+                    Patch(facecolor=palettes_y[0][0], hatch=hatches[0][0], edgecolor="#2f2f2f", label=labels[1]),
+                    Patch(facecolor=palettes[0][1], hatch=hatches[0][1], edgecolor="#2f2f2f", label=labels[4]),
+                    Patch(facecolor=palettes_y[0][1], hatch=hatches[0][1], edgecolor="#2f2f2f", label=labels[5]),
+                    Patch(facecolor=palettes[0][2], hatch=hatches[0][2], edgecolor="#2f2f2f", label=labels[2]),
+                    Patch(facecolor=palettes[0][3], hatch=hatches[0][3], edgecolor="#2f2f2f", label=labels[3]),
+                    Patch(facecolor=palettes[0][4], hatch=hatches[0][4], edgecolor="#2f2f2f", label=labels[6]),
+                    Patch(facecolor=palettes[0][5], hatch=hatches[0][5], edgecolor="#2f2f2f", label=labels[7])] 
+    leg = fig.legend(custom_lines, labels, loc="lower center", bbox_to_anchor=(0.5, 0), fontsize=7, ncol=4, handletextpad=0.5, columnspacing=0.4)
+    leg.set_title(None)
+    leg._legend_box.align = "left"
+    leg.get_frame().set_facecolor('white')
+        
+    # plt.suptitle("Execution time speedup on Top-K SpMV for GPU and FPGA vs. CPU", ha="left", x=0.02, y=0.98, fontsize=13)
+    
+    save_plot("../../../../data/plots", f"exec_time_{DATE}" + ".{}")  
+    
+
+def plot_bars_2(res):
+    
+    res["distribution"] = pd.Categorical(res["distribution"], ["uniform", "glove", "gamma"])
+    res["hardware"] = pd.Categorical(res["hardware"], ["cpu", "gpu", "gpu_half"] + sorted([x for x in res["hardware"].unique() if "fpga" in x])[::1])
+    res = res.sort_values(["distribution", "hardware"])
+    
+    sns.set_style("white", {"ytick.left": True})
+    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
+    plt.rcParams['axes.titlepad'] = 25 
+    plt.rcParams['axes.labelpad'] = 9 
+    plt.rcParams['axes.titlesize'] = 22 
+    plt.rcParams['axes.labelsize'] = 14 
+    plt.rcParams['xtick.major.pad'] = 1 
+    plt.rcParams['hatch.linewidth'] = 0.3
+        
+    sizes = sorted(res["rows"].unique())[1:] + [sorted(res["rows"].unique())[0]]
+    dist = res["distribution"].unique()
+    hardware = sorted(res["hardware"].unique())
+
+    num_col = 4
+    num_rows = 2
+    fig = plt.figure(figsize=(1.5 * num_col, 2.5 * num_rows))
+    gs = gridspec.GridSpec(num_rows, num_col)
+    plt.subplots_adjust(top=0.94,
+                    bottom=0.18,
+                    left=0.06,
+                    right=.99,
+                    hspace=0.6,
+                    wspace=0.05)
+
+    palettes_y = [["#FCF49A", "#FCF6B1"]] * num_col * num_rows
+    # Palette for thesis
+    palettes = [["#ED9E6F", "#FFA880"] + ["#E7F7DF", "#B5E8B5", "#71BD9D", "#469C94"][::-1]] * num_col * num_rows
+    # hatches = [[None, "/" * 7, "\\" * 7, "/" * 7, "\\" * 7, "/" * 7, "\\" * 7] * 2] * num_col 
+    hatches = [["/" * 4, "\\" * 4, "/" * 4, "\\" * 4] * 4] * num_col * num_rows
+        
+    groups = res.groupby(["distribution", "rows"])
+    for i, group in groups:
+        print(i)
+    fpga_labels = []
+    for i, group in enumerate(groups):
+        ax = fig.add_subplot(gs[i // num_col, i % num_col])
+        data = group[1] 
+        # Remove CPU;
+        data = data[data["hardware"] != "cpu"]
+        data["hardware"] = data["hardware"].astype(str)
+        ax = sns.barplot(x="hardware", y="spmv_speedup", data=data, palette=palettes_y[i], capsize=.05, errwidth=0.8, ax=ax, ci=90,
+                          edgecolor="#2f2f2f")
+        ax = sns.barplot(x="hardware", y="speedup", data=data, palette=palettes[i], capsize=.05, errwidth=0.8, ax=ax, ci=90,
+                          edgecolor="#2f2f2f")
+        print(group[1]["hardware"].unique())
+
+        # Set a different hatch for each bar
+        for j, bar in enumerate(ax.patches):
+            bar.set_hatch(hatches[i][j])
+
+        ax.set_ylim((1, 200))
+        ax.set_ylabel("")
+        ax.set_xlabel("")
+        labels = ax.get_xticklabels()
+        new_fpga_labels = [get_fpga_legend_label(l._text) for l in labels if l._text not in GPU_LABELS]
+        if len(new_fpga_labels) > len(fpga_labels):
+            fpga_labels = new_fpga_labels
+        ax.set_xticklabels([GPU_LABELS[l._text] if (l._text in GPU_LABELS) else get_fpga_label(l._text) for l in labels])
+        cpu_label = int(np.mean(group[1][group[1]["hardware"] == "cpu"]["exec_time_ms"]))
+        ax.tick_params(axis='x', which='major', labelsize=5, rotation=0)
+        
+        # Set the y ticks;
+        ax.yaxis.set_major_locator(plt.LinearLocator(6))
+        if i % num_col == 0:
+            ax.set_yticklabels(labels=[f"{int(l)}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=8)
+        else:
+            ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
+            # Hide tick markers;
+            for tic in ax.yaxis.get_major_ticks():
+                tic.tick1line.set_visible(False) 
+                tic.tick2line.set_visible(False) 
+        ax.xaxis.grid(False)
+        
+        if i % num_col != 0:
+            ax.set_yticklabels([])
+            # sns.despine(ax=ax, left=True, top=True, right=True)
+        ax.yaxis.grid(True, linewidth=0.5)
+        
+        # Speedup labels;
+        offsets = [l._y[1] for l in ax.lines[::3]][:len(ax.lines) // 2]
+        # for j, g_tmp in data.groupby(["hardware"]):
+        #     offsets += [get_upper_ci_size(g_tmp["spmv_speedup"], ci=0.7)]
+        print(offsets)
+        offsets = [o + 4 if not np.isnan(o) else 0.2 for o in offsets]
+        add_labels(ax, vertical_coords=offsets, rotation=90, fontsize=8, max_only=False, max_bars=6, format_str="{:.0f}x",)
+        
+        # Add graph type;
+        dist_dict = {"uniform": "Uniform", "gamma": r"$\Gamma$"}
+        graph_name = f"{dist_dict[group[0][0]]}, {get_exp_label(group[0][1], 'N=', True)}" if group[0][0] != "glove" else "Sparse GloVe"
+        ax.annotate(graph_name, xy=(0.0, 0.95), fontsize=10, ha="left", xycoords="axes fraction", xytext=(0.0, 1.06))
+                
+        ax.annotate(f"CPU Baseline:", xy=(0.0, -0.27), fontsize=8, ha="left", xycoords="axes fraction")
+        ax.annotate(f"{cpu_label} ms", xy=(0.59, -0.27), fontsize=8, color="#7f7f7f", ha="left", xycoords="axes fraction")
+    
+    # # Add custom legend;
+    labels = ["GPU F32, Top-K SpMV", "GPU F32, SpMV only", "GPU F16, Top-K SpMV", "GPU F16, SpMV only"] + fpga_labels
+    labels = [x for i in range(4) for x in [labels[i], labels[i + 4]]]
+    if len(labels) < 8:
+        labels += ["???"] * (8 - len(labels)) 
+    custom_lines = [Patch(facecolor=palettes[0][0], hatch=hatches[0][0], edgecolor="#2f2f2f"),
+                    Patch(facecolor=palettes[0][2], hatch=hatches[0][2], edgecolor="#2f2f2f"),
+                    Patch(facecolor=palettes_y[0][0], hatch=hatches[0][0], edgecolor="#2f2f2f"),
+                    Patch(facecolor=palettes[0][3], hatch=hatches[0][3], edgecolor="#2f2f2f"),
+                    Patch(facecolor=palettes[0][1], hatch=hatches[0][1], edgecolor="#2f2f2f"),
+                    Patch(facecolor=palettes[0][4], hatch=hatches[0][4], edgecolor="#2f2f2f"),
+                    Patch(facecolor=palettes_y[0][1], hatch=hatches[0][1], edgecolor="#2f2f2f"),
+                    Patch(facecolor=palettes[0][5], hatch=hatches[0][5], edgecolor="#2f2f2f")] 
+    leg = fig.legend(custom_lines, labels, loc="lower center", bbox_to_anchor=(0.5, 0), fontsize=7, ncol=4, handletextpad=0.5, columnspacing=0.4)
+    leg.set_title(None)
+    leg._legend_box.align = "left"
+    leg.get_frame().set_facecolor('white')
+        
+    # plt.suptitle("Execution time speedup on Top-K SpMV for GPU and FPGA vs. CPU", ha="left", x=0.02, y=0.98, fontsize=13)
+    
+    save_plot("../../../../data/plots", f"exec_time_large_{DATE}" + ".{}")  
 
 #%%  
     
@@ -461,143 +724,13 @@ if __name__ == "__main__":
         
     res = join_datasets(results_cpu, results_gpu, results_fpga)
     
-    # res = res[res["distribution"] == "uniform"]
-    
     res_agg = res.groupby(['rows', 'max_cols', 'nnz_per_row', 'distribution', 'hardware'])[['error_idx', 'error_val',
        'exec_time_ms', 'spmv_exec_time_ms', 'speedup', 'spmv_speedup',
-       'baseline_time_ms', 'spmv_baseline_time_ms']].agg(gmean)
+       'baseline_time_ms', 'spmv_baseline_time_ms']].agg(np.mean)
+    
+    # res = res[res["distribution"] == "uniform"]
     
     # %%
-    
-    sns.set_style("white", {"ytick.left": True})
-    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
-    plt.rcParams['axes.titlepad'] = 25 
-    plt.rcParams['axes.labelpad'] = 9 
-    plt.rcParams['axes.titlesize'] = 22 
-    plt.rcParams['axes.labelsize'] = 14 
-    plt.rcParams['xtick.major.pad'] = 1 
-    plt.rcParams['hatch.linewidth'] = 0.3
-        
-    sizes = sorted(res["rows"].unique())[1:] + [sorted(res["rows"].unique())[0]]
-    dist = res["distribution"].unique()
-    hardware = sorted(res["hardware"].unique())
-
-    num_col = len(sizes)
-    num_rows = 1  # len(dist)
-    fig = plt.figure(figsize=(1.5 * num_col, 2.6 * num_rows))
-    gs = gridspec.GridSpec(num_rows, num_col)
-    plt.subplots_adjust(top=0.9,
-                    bottom=0.33,
-                    left=0.06,
-                    right=.99,
-                    hspace=0.9,
-                    wspace=0.05)
-    
-    # Old palette;
-    palettes = [[COLORS["r1"], COLORS["bb0"], COLORS["bb2"], COLORS["bb3"], COLORS["bb4"], COLORS["bb5"]]] * num_col 
-    # Palette used for DATE;
-    palettes = [[COLORS["peach1"], COLORS["bb2"], COLORS["bb2"], "#A5E6C6", "#A5E6C6", COLORS["bb5"], COLORS["bb5"]]] * num_col 
-    # Orange palette, for GPUs
-    palettes = [[COLORS["peach1"], "#FFA880", "#FFB896", "#FFC7AD"]] * num_col 
-    # Orange palette, yellow, for GPUs
-    palettes_y = [["#FCF061", "#FCF38B", "#FCF49A", "#FCF6B1"]] * num_col 
-    # Palette for DAC
-    palettes = [[COLORS["peach1"], "#FFA880", COLORS["bb5"], "#A5E6C6", COLORS["bb3"], COLORS["bb2"]]] * num_col 
-    palettes_y = [["#FCF49A", "#FCF6B1"]] * num_col 
-    # hatches = [[None, "/" * 7, "\\" * 7, "/" * 7, "\\" * 7, "/" * 7, "\\" * 7] * 2] * num_col 
-    hatches = [["/" * 5, "\\" * 5, "/" * 5, "\\" * 5] * 4] * num_col
-    
-    ii = 0
-    # for ii, group_ii in enumerate(res.groupby(["distribution"])):
-    #     groups = group_ii[1].groupby(["rows"])
-    
-    groups = res.groupby(["rows"])
-    groups = sorted(groups, key=lambda g: g[0])
-    groups = groups[1:] + [groups[0]]
-    fpga_labels = []
-    for i, group in enumerate(groups):
-        ax = fig.add_subplot(gs[ii, i])
-        
-        # Replace "float" with "32float" to guarantee the right bar sorting;
-        # group[1].loc[group[1]["n_bit"] == "cpu", "n_bit"] = "32cpu"
-        
-        # Create a unique row id;
-        # group[1]["row"] = group[1]["n_bit"].astype(str) + group[1]["n_cores"].astype(str) 
-        # group[1]["row_str"] = group[1]["n_bit"].astype(str) + [("b\n" if x !="F32" else "\n") for x in group[1]["n_bit"]] + group[1]["n_cores"].astype(str) + "C"
-        
-        data = group[1] # .sort_values(["n_bit", "n_cores"], ascending=[False, True]).reset_index(drop=True)
-        # Remove CPU;
-        data = data[data["hardware"] != "cpu"]
-
-        ax = sns.barplot(x="hardware", y="spmv_speedup", data=data, palette=palettes_y[i], capsize=.05, errwidth=0.8, ax=ax,
-                          edgecolor="#2f2f2f")
-        ax = sns.barplot(x="hardware", y="speedup", data=data, palette=palettes[i], capsize=.05, errwidth=0.8, ax=ax,
-                          edgecolor="#2f2f2f")
-
-        # Set a different hatch for each bar
-        for j, bar in enumerate(ax.patches):
-            bar.set_hatch(hatches[i][j])
-        # sns.despine(ax=ax)
-       
-        ax.set_ylim((1, int(1.1 * max(np.max(res_agg["spmv_speedup"]), np.max(res_agg["speedup"])))))
-        ax.set_ylabel("")
-        ax.set_xlabel("")
-        labels = ax.get_xticklabels()
-        new_fpga_labels = [get_fpga_legend_label(l._text) for l in labels if l._text not in GPU_LABELS]
-        if len(new_fpga_labels) > len(fpga_labels):
-            fpga_labels = new_fpga_labels
-        ax.set_xticklabels([GPU_LABELS[l._text] if (l._text in GPU_LABELS) else get_fpga_label(l._text) for l in labels])
-        cpu_label = int(np.mean(group[1][group[1]["hardware"] == "cpu"]["exec_time_ms"]))
-        ax.tick_params(axis='x', which='major', labelsize=5, rotation=0)
-        
-        # Set the y ticks;
-        ax.yaxis.set_major_locator(plt.LinearLocator(6))
-        if i == 0:
-            ax.set_yticklabels(labels=[f"{int(l)}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=8)
-        else:
-            ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
-            # Hide tick markers;
-            for tic in ax.yaxis.get_major_ticks():
-                tic.tick1line.set_visible(False) 
-                tic.tick2line.set_visible(False) 
-        ax.xaxis.grid(False)
-        
-        if i > 0:
-            ax.set_yticklabels([])
-            # sns.despine(ax=ax, left=True, top=True, right=True)
-        ax.yaxis.grid(True)
-        
-        # Speedup labels;
-        offsets = []
-        for j, g_tmp in data.groupby(["hardware"]):
-            offsets += [get_upper_ci_size(g_tmp["spmv_speedup"], ci=0.80)]
-        offsets = [o + 4 if not np.isnan(o) else 0.2 for o in offsets]
-        add_labels(ax, vertical_offsets=offsets, rotation=90, fontsize=8, max_only=False, max_bars=6, format_str="{:.0f}x",)
-        
-        # Add graph type;
-        ax.annotate(f"{get_exp_label(sizes[i], 'N=', True)}" if i < 3 else "Sparse GloVe", xy=(0.0, 0.95), fontsize=10, ha="left", xycoords="axes fraction", xytext=(0.0, 1.06))
-                
-        ax.annotate(f"CPU Baseline:", xy=(0.0, -0.28), fontsize=8, ha="left", xycoords="axes fraction")
-        ax.annotate(f"{cpu_label} ms", xy=(0.59, -0.28), fontsize=8, color=COLORS["peach1"], ha="left", xycoords="axes fraction")
-    
-    # # Add custom legend;
-    labels = ["GPU F32, Top-K SpMV", "GPU F32, SpMV only", "GPU F16, Top-K SpMV", "GPU F16, SpMV only"] + fpga_labels
-    if len(labels) < 8:
-        labels += ["???"] * (8 - len(labels)) 
-    custom_lines = [Patch(facecolor=palettes[0][0], hatch=hatches[0][0], edgecolor="#2f2f2f", label=labels[0]),
-                    Patch(facecolor=palettes_y[0][0], hatch=hatches[0][0], edgecolor="#2f2f2f", label=labels[1]),
-                    Patch(facecolor=palettes[0][1], hatch=hatches[0][1], edgecolor="#2f2f2f", label=labels[4]),
-                    Patch(facecolor=palettes_y[0][1], hatch=hatches[0][1], edgecolor="#2f2f2f", label=labels[5]),
-                    Patch(facecolor=palettes[0][2], hatch=hatches[0][2], edgecolor="#2f2f2f", label=labels[2]),
-                    Patch(facecolor=palettes[0][3], hatch=hatches[0][3], edgecolor="#2f2f2f", label=labels[3]),
-                    Patch(facecolor=palettes[0][4], hatch=hatches[0][4], edgecolor="#2f2f2f", label=labels[6]),
-                    Patch(facecolor=palettes[0][5], hatch=hatches[0][5], edgecolor="#2f2f2f", label=labels[7])] 
-                    
-    leg = fig.legend(custom_lines, labels, loc="lower center", bbox_to_anchor=(0.5, 0), fontsize=7, ncol=4, handletextpad=0.5, columnspacing=0.4)
-    leg.set_title(None)
-    leg._legend_box.align = "left"
-    leg.get_frame().set_facecolor('white')
-        
-    # plt.suptitle("Execution time speedup on Top-K SpMV for GPU and FPGA vs. CPU", ha="left", x=0.02, y=0.98, fontsize=13)
-    
-    plt.savefig(f"../../../../data/plots/exec_time_{DATE}.pdf")
+    plot_bars(res)
+    plot_bars_2(res)
+  

@@ -19,7 +19,7 @@ from matplotlib.collections import PatchCollection, LineCollection
 from matplotlib.lines import Line2D
 from plot_utils import *
 
-DATE = "2021_03_07"
+DATE = "2021_08_14"
 
 SCATTER_SIZE = 14
 
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     peak_performance_fpga = [p * fpga_clock * max_cores_fpga for p in packet_size_fpga]
     peak_bandwidth_fpga = [bandwidth_single_core_fpga * c for c in num_cores_fpga]
     operational_intensity_fpga = [p / (512 / 8) for p in packet_size_fpga]
-    exec_times_fpga = [5, 3.5]  # Exec time in ms of 32b-24cores-219mhz and 21b-32cores-177mhz
+    exec_times_fpga = [4, 2.6]  
     nnz_fpga = 20 * 10**7
     nnz_per_sec_fpga = [nnz_fpga / (p / 1000) for p in exec_times_fpga]
     
@@ -359,7 +359,7 @@ if __name__ == "__main__":
     peak_performance_fpga = [p * fpga_clock * max_cores_fpga for p in packet_size_fpga]
     peak_bandwidth_fpga = [bandwidth_single_core_fpga * c for c in num_cores_fpga]
     operational_intensity_fpga = [p / (512 / 8) for p in packet_size_fpga]
-    exec_times_fpga = [27 * 4, 11.2, 5.6, 2.8]  # Exec time in ms of 20b-32cores-199mhz, for 4, 8, 16, 32 cores; 4 is scaled to 1 core;
+    exec_times_fpga = [20.8 * 4, 10.4, 5.2, 2.6]  
     nnz_fpga = 20 * 10**7
     nnz_per_sec_fpga = [nnz_fpga / (p / 1000) for p in exec_times_fpga]
     
@@ -469,4 +469,4 @@ if __name__ == "__main__":
     
     # plt.annotate("Operational intensity increase with BS-CSR", fontsize=8, xy=(-0.3, 1.1), xycoords="axes fraction", ha="left")
        
-    plt.savefig(f"../../../../data/plots/roofline_cpu_gpu_{DATE}.pdf")
+    save_plot("../../../../data/plots", f"roofline_cpu_gpu_{DATE}" + ".{}")  

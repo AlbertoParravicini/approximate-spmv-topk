@@ -33,21 +33,21 @@ void spmv_bscsr_top_k_main(
 		input_packet_real_inout_bscsr *res3
 		) {
 // Ports used to transfer data, using AXI master;
-#pragma HLS INTERFACE m_axi port = coo0 offset = slave bundle = gmem0 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = coo1 offset = slave bundle = gmem1 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = coo2 offset = slave bundle = gmem2 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = coo3 offset = slave bundle = gmem3 num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = coo0 offset = slave bundle = gmem0 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = coo1 offset = slave bundle = gmem1 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = coo2 offset = slave bundle = gmem2 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = coo3 offset = slave bundle = gmem3 // num_write_outstanding = 32 latency = 100
 
-#pragma HLS INTERFACE m_axi port = vec offset = slave bundle = gmem0 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = res_idx0 offset = slave bundle = gmem0 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = res_idx1 offset = slave bundle = gmem1 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = res_idx2 offset = slave bundle = gmem2 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = res_idx3 offset = slave bundle = gmem3 num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = vec offset = slave bundle = gmem0 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = res_idx0 offset = slave bundle = gmem0 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = res_idx1 offset = slave bundle = gmem1 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = res_idx2 offset = slave bundle = gmem2 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = res_idx3 offset = slave bundle = gmem3 // num_write_outstanding = 32 latency = 100
 
-#pragma HLS INTERFACE m_axi port = res0 offset = slave bundle = gmem0 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = res1 offset = slave bundle = gmem1 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = res2 offset = slave bundle = gmem2 num_write_outstanding = 32 latency = 100
-#pragma HLS INTERFACE m_axi port = res3 offset = slave bundle = gmem3 num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = res0 offset = slave bundle = gmem0 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = res1 offset = slave bundle = gmem1 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = res2 offset = slave bundle = gmem2 // num_write_outstanding = 32 latency = 100
+#pragma HLS INTERFACE m_axi port = res3 offset = slave bundle = gmem3 // num_write_outstanding = 32 latency = 100
 
 // Ports used for control signals, using AXI slave;
 #pragma HLS INTERFACE s_axilite register port = num_rows0 bundle = control
@@ -139,20 +139,6 @@ void spmv_bscsr_top_k_main(
 		}
 	}
 
-//	COPY_INPUT: for (int_type i = 0; i < num_cols0; i++) {
-//#pragma HLS loop_tripcount min=hls_num_cols max=hls_num_cols avg=hls_num_cols
-//#pragma HLS pipeline II=1
-//		input_packet_real_inout_bscsr vec_tmp = vec[i / BSCSR_PACKET_SIZE];
-//		real_type_inout vec_curr = (real_type_inout) vec_tmp[i % BSCSR_PACKET_SIZE];
-//		for (int_type s = 0; s < SUB_SPMV_PARTITIONS; s++) {
-//#pragma HLS unroll
-//			for (int_type j = 0; j < VEC_REPLICAS; j++) {
-//#pragma HLS unroll
-//				vec_local[s][j][i] = vec_curr;
-//			}
-//		}
-//	}
-
 	// Main SpMV computation;
 	spmv_bscsr_top_k_multi_stream(coo0, num_rows0, num_cols0, nnz0, vec_local[0], res_local_idx[0], res_local[0]);
 	spmv_bscsr_top_k_multi_stream(coo1, num_rows1, num_cols1, nnz1, vec_local[1], res_local_idx[1], res_local[1]);
@@ -197,94 +183,4 @@ void spmv_bscsr_top_k_main(
 		res_idx3[i] = packet_idx3;
 		res3[i] = packet3;
 	}
-
-//	WRITE_OUTPUT: for (int_type i = 0; i < K * SUB_SPMV_PARTITIONS; i++) {
-//#pragma HLS pipeline II=1
-//		input_packet_int_bscsr packet_idx;
-//		input_packet_real_inout_bscsr packet;
-//
-//		int_type packet_position = i % K;
-//		int_type partition = i / K;
-//
-//		for (int_type j = 0; j < BSCSR_PACKET_SIZE; j++) {
-//#pragma HLS unroll
-//			packet_idx[j] = res_local_idx[partition][j][packet_position];
-//			packet[j] = (real_type_inout) res_local[partition][j][packet_position];
-//		}
-//		switch (partition) {
-//		case 0:
-//			res_idx0[packet_position] = packet_idx;
-//			res0[packet_position] = packet;
-//			break;
-//		case 1:
-//			res_idx1[packet_position] = packet_idx;
-//			res1[packet_position] = packet;
-//			break;
-//		case 2:
-//			res_idx2[packet_position] = packet_idx;
-//			res2[packet_position] = packet;
-//			break;
-//		case 3:
-//			res_idx3[packet_position] = packet_idx;
-//			res3[packet_position] = packet;
-//			break;
-//		}
-//	}
-//	// Copy values of "res" to the output;
-//	WRITE_OUTPUT_1: for (int_type i = 0; i < K * TOPK_RES_COPIES; i++) {
-//#pragma HLS pipeline II=1
-//		int_type t = i % K;
-//		int_type c = i / K;
-//		input_packet_int_bscsr packet_idx;
-//		input_packet_real_inout_bscsr packet;
-//		for (int_type j = 0; j < BSCSR_PACKET_SIZE; j++) {
-//#pragma HLS unroll
-//			packet_idx[j] = res_local_idx[0][c][j][t];
-//			packet[j] = (real_type_inout) res_local[0][c][j][t];
-//		}
-//		res_idx0[t + K * c] = packet_idx;
-//		res0[t + K * c] = packet;
-//	}
-//	WRITE_OUTPUT_2: for (int_type i = 0; i < K * TOPK_RES_COPIES; i++) {
-//#pragma HLS pipeline II=1
-//		int_type t = i % K;
-//		int_type c = i / K;
-//		input_packet_int_bscsr packet_idx;
-//		input_packet_real_inout_bscsr packet;
-//		for (int_type j = 0; j < BSCSR_PACKET_SIZE; j++) {
-//#pragma HLS unroll
-//			packet_idx[j] = res_local_idx[1][c][j][t];
-//			packet[j] = (real_type_inout) res_local[1][c][j][t];
-//		}
-//		res_idx1[t + K * c] = packet_idx;
-//		res1[t + K * c] = packet;
-//	}
-//	WRITE_OUTPUT_3: for (int_type i = 0; i < K * TOPK_RES_COPIES; i++) {
-//#pragma HLS pipeline II=1
-//		int_type t = i % K;
-//		int_type c = i / K;
-//		input_packet_int_bscsr packet_idx;
-//		input_packet_real_inout_bscsr packet;
-//		for (int_type j = 0; j < BSCSR_PACKET_SIZE; j++) {
-//#pragma HLS unroll
-//			packet_idx[j] = res_local_idx[2][c][j][t];
-//			packet[j] = (real_type_inout) res_local[2][c][j][t];
-//		}
-//		res_idx2[t + K * c] = packet_idx;
-//		res2[t + K * c] = packet;
-//	}
-//	WRITE_OUTPUT_4: for (int_type i = 0; i < K * TOPK_RES_COPIES; i++) {
-//#pragma HLS pipeline II=1
-//		int_type t = i % K;
-//		int_type c = i / K;
-//		input_packet_int_bscsr packet_idx;
-//		input_packet_real_inout_bscsr packet;
-//		for (int_type j = 0; j < BSCSR_PACKET_SIZE; j++) {
-//#pragma HLS unroll
-//			packet_idx[j] = res_local_idx[3][c][j][t];
-//			packet[j] = (real_type_inout) res_local[3][c][j][t];
-//		}
-//		res_idx3[t + K * c] = packet_idx;
-//		res3[t + K * c] = packet;
-//	}
 }
